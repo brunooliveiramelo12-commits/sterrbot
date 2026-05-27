@@ -1,7 +1,6 @@
 {
-  "name": "ster-bot",
+  "name": "ster-whatsapp-bot",
   "version": "1.0.0",
-  "description": "Robo de vendas WhatsApp",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
