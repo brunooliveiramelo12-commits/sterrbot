@@ -1,0 +1,11 @@
+[
+  {
+    "id": "001",
+    "nome": "Conjunto de Renda Luxo",
+    "preco": "R$ 89,90",
+    "tamanhos_disponiveis": ["P", "M", "G"],
+    "cores": ["Preto", "Vermelho", "Branco"],
+    "descricao": "Conjunto com sutiã de aro sem bojo e calcinha fio em renda antialérgica.",
+    "link_pagamento": "https://linkdepagamento.com/conjunto-luxo"
+  }
+]
