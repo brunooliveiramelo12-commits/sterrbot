@@ -1,7 +1,11 @@
 const http = require('http');
 const fs = require('fs');
 const { GoogleGenAI } = require('@google/genai');
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const sock = makeWASocket({
+    auth: state,
+    logger: pino({ level: 'silent' }),
+    browser: ['Ubuntu', 'Chrome', '20.0.04'] // <-- Isso faz o WhatsApp achar que é um computador comum
+});
 const qrcode = require('qrcode-terminal');
 const pino = require('pino');
 
