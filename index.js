@@ -7,6 +7,9 @@ const { GoogleGenAI } = require('@google/genai');
 // Inicializa a IA da Google
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
+// O NÚMERO DA STER CONFIGURADO DIRETO NO CÓDIGO
+const NUMERO_WHATSAPP = '5588992270058';
+
 // Lista na memória do servidor para guardar quem escolheu falar com humano
 const clientesEmAtendimentoHumano = new Set();
 
@@ -29,7 +32,7 @@ A REGRA DE OURO DA DUCARMO (Varejo vs. Atacado):
 
 REGRA DE ATENDIMENTO HUMANO / PESSOAL:
 - Você deve SEMPRE deixar a cliente livre. Se ela perguntar por "atendimento humano", "falar com pessoa", "atendente", ou se você notar que ela quer fechar o pedido com o dono, você deve aceitar com muita simpatia.
-- Quando a cliente solicitar atendimento pessoal, despeça-se com carinho e adicione obrigatoriamente a tag [ATENDIMENTO_HUMANO] exatamente no final da sua resposta. 
+- Quando a cliente solicitar atendimento pessoal, despedça-se com carinho e adicione obrigatoriamente a tag [ATENDIMENTO_HUMANO] exatamente no final da sua resposta. 
 - Exemplo de resposta para quando pedirem humano: "Claro, minha flor! Vou te passar agora mesmo para a nossa equipe pessoal te ajudar, tá bom? Só um momentinho! 💕 [ATENDIMENTO_HUMANO]"
 
 O FUNIL DE ATENDIMENTO DO WHATSAPP:
@@ -52,12 +55,12 @@ async function conectarWhatsApp() {
         browser: ['Ubuntu', 'Chrome', '20.0.04']
     });
 
-    // CONSTANTE DA NOVA FUNÇÃO: CONEXÃO VIA NÚMERO (PAIRING CODE)
-    if (!sock.authState.creds.registered && process.env.NUMERO_WHATSAPP) {
+    // FUNÇÃO DE CONEXÃO VIA NÚMERO (PAIRING CODE)
+    if (!sock.authState.creds.registered && NUMERO_WHATSAPP) {
         setTimeout(async () => {
             try {
-                // Remove espaços e traços do número configurado
-                const numeroLimpo = process.env.NUMERO_WHATSAPP.replace(/\D/g, '');
+                // Remove espaços, traços e parênteses automaticamente
+                const numeroLimpo = NUMERO_WHATSAPP.replace(/\D/g, '');
                 const codigo = await sock.requestPairingCode(numeroLimpo);
                 console.log(`\n=================================================`);
                 console.log(`🔑 SEU CÓDIGO DE PAREAMENTO NO CELULAR: ${codigo}`);
@@ -74,8 +77,7 @@ async function conectarWhatsApp() {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
-            // Se configurou o número, avisa no log e pula o desenho do QR code
-            if (process.env.NUMERO_WHATSAPP) {
+            if (NUMERO_WHATSAPP) {
                 console.log('[Aviso] Gerando código numérico... Ignorando QR Code visual.');
             } else {
                 console.log('\n▼ ESCANEIE O QR CODE ABAIXO PARA CONECTAR A STER ▼\n');
@@ -100,14 +102,14 @@ async function conectarWhatsApp() {
 
             const textoCliente = msg.message?.conversation || msg.message?.extendedTextMessage?.text;
 
-            // BONUS TRACK: Comando para o dono da loja reativar o bot na conversa
+            // Comando para o dono da loja reativar o bot na conversa (/bot)
             if (msg.key.fromMe && textoCliente === '/bot') {
                 clientesEmAtendimentoHumano.delete(jid);
                 await sock.sendMessage(jid, { text: "🤖 *Ster Reativada!* Voltei a cuidar do atendimento automático desta conversa lindeza." });
                 continue;
             }
 
-            // Se o cliente escolheu atendimento humano, a Ster fica em silêncio absoluto nessa conversa
+            // Se o cliente escolheu atendimento humano, a Ster fica em silêncio absoluto
             if (clientesEmAtendimentoHumano.has(jid)) continue;
 
             if (msg.key.fromMe) continue;
@@ -124,10 +126,10 @@ async function conectarWhatsApp() {
 
                 let textoFinal = respostaGemini.text;
 
-                // NOVA FUNÇÃO: Intercepta se o cliente pediu atendimento pessoal
+                // Intercepta se o cliente pediu atendimento pessoal ou fim do funil
                 if (textoFinal.includes('[ATENDIMENTO_HUMANO]')) {
-                    clientesEmAtendimentoHumano.add(jid); // Bloqueia o robô para essa pessoa
-                    textoFinal = textoFinal.replace('[ATENDIMENTO_HUMANO]', '').trim(); // Remove a tag do texto
+                    clientesEmAtendimentoHumano.add(jid);
+                    textoFinal = textoFinal.replace('[ATENDIMENTO_HUMANO]', '').trim();
                     await sock.sendMessage(jid, { text: textoFinal });
                     console.log(`[Status] Chat ${jid} transferido para o Atendimento Humano.`);
                     continue;
