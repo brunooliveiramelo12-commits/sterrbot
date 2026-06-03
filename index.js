@@ -7,11 +7,10 @@ const { GoogleGenAI } = require('@google/genai');
 // Inicializa a IA da Google
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-// O NÚMERO DA STER CONFIGURADO DIRETO NO CÓDIGO
+// Configurações de Produção da Loja
 const NUMERO_WHATSAPP = '5588992270058';
-
-// Lista na memória do servidor para guardar quem escolheu falar com humano
 const clientesEmAtendimentoHumano = new Set();
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // Carrega o estoque do arquivo separado (produtos.json)
 let mapProdutos = "Nenhum produto cadastrado.";
@@ -24,23 +23,23 @@ try {
 }
 
 const systemInstruction = `
-Você é a Ster, uma consultora de vendas digital extremamente simpática da Ducarmo Exclusive. Seu objetivo é conduzir as clientes com carinho através do nosso funil de vendas.
+Você é a Ster, uma consultora de vendas digital extremamente simpática, calorosa e dedicada da Ducarmo Exclusive (moda íntima). Seu objetivo é conduzir as clientes com carinho através do nosso funil de vendas.
 
 A REGRA DE OURO DA DUCARMO (Varejo vs. Atacado):
 - Varejo: Menos de R$ 150,00.
 - Atacado: A partir de R$ 150,00 (ganha desconto de fábrica em todas as peças!).
+- Estratégia: Se o carrinho da cliente estiver perto de R$ 150, incentive-a a levar mais um item para liberar o preço de atacado.
 
 REGRA DE ATENDIMENTO HUMANO / PESSOAL:
-- Você deve SEMPRE deixar a cliente livre. Se ela perguntar por "atendimento humano", "falar com pessoa", "atendente", ou se você notar que ela quer fechar o pedido com o dono, você deve aceitar com muita simpatia.
-- Quando a cliente solicitar atendimento pessoal, despedça-se com carinho e adicione obrigatoriamente a tag [ATENDIMENTO_HUMANO] exatamente no final da sua resposta. 
-- Exemplo de resposta para quando pedirem humano: "Claro, minha flor! Vou te passar agora mesmo para a nossa equipe pessoal te ajudar, tá bom? Só um momentinho! 💕 [ATENDIMENTO_HUMANO]"
+- Se a cliente pedir para falar com um atendente, humano, ou se demonstrar que quer fechar o pagamento, despeça-se com carinho e adicione a tag [ATENDIMENTO_HUMANO] no final do texto.
+- Exemplo: "Com certeza, lindeza! Vou chamar o pessoal do financeiro agora. Só um minutinho! 💕 [ATENDIMENTO_HUMANO]"
 
 O FUNIL DE ATENDIMENTO DO WHATSAPP:
-1. BOAS-VINDAS: Diga que compras acima de R$ 150 ganham preço de atacado de fábrica!
-2. CONSULTORIA: Pergunte o tamanho (P, M, G, GG, EX) e o que ela procura (Lycra, Cetinete, Antialérgico ou Renda).
-3. APRESENTAÇÃO: Mostre os modelos e valores correspondentes.
-4. FECHO DO PEDIDO: Some os valores. Ofereça mais peças se estiver perto de bater R$ 150 para liberar o atacado.
-5. ENCAMINHAMENTO: Quando ela aceitar fechar ou quiser pagar, mande a mensagem de transição e inclua a tag [ATENDIMENTO_HUMANO].
+1. BOAS-VINDAS: Receba com alegria e cite o gatilho do Atacado a partir de R$ 150.
+2. CONSULTORIA: Descubra o tamanho (P, M, G, GG, EX) e a preferência de tecido (Lycra, Cetinete, Antialérgico ou Renda).
+3. APRESENTAÇÃO: Mostre as opções e valores do catálogo.
+4. FECHO DO PEDIDO: Some tudo e aplique a regra de preço correta.
+5. ENCAMINHAMENTO: Transição para o humano com a tag secreta.
 
 Este é o catálogo oficial de produtos da Ducarmo Exclusive:
 ${mapProdutos}
@@ -52,23 +51,22 @@ async function conectarWhatsApp() {
     const sock = makeWASocket({
         auth: state,
         logger: pino({ level: 'silent' }),
-        browser: ['Ubuntu', 'Chrome', '20.0.04']
+        browser: ['Ducarmo Exclusive', 'Chrome', '1.0.0']
     });
 
-    // FUNÇÃO DE CONEXÃO VIA NÚMERO (PAIRING CODE)
+    // Conexão via Código de Pareamento por Número
     if (!sock.authState.creds.registered && NUMERO_WHATSAPP) {
         setTimeout(async () => {
             try {
-                // Remove espaços, traços e parênteses automaticamente
                 const numeroLimpo = NUMERO_WHATSAPP.replace(/\D/g, '');
                 const codigo = await sock.requestPairingCode(numeroLimpo);
                 console.log(`\n=================================================`);
                 console.log(`🔑 SEU CÓDIGO DE PAREAMENTO NO CELULAR: ${codigo}`);
                 console.log(`=================================================\n`);
             } catch (errCode) {
-                console.error("Erro ao gerar código de pareamento por número:", errCode);
+                console.error("Erro ao gerar código de pareamento:", errCode);
             }
-        }, 6000); // Aguarda o carregamento inicial do servidor
+        }, 6000);
     }
 
     sock.ev.on('creds.update', saveCreds);
@@ -76,20 +74,19 @@ async function conectarWhatsApp() {
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
 
-        if (qr) {
-            if (NUMERO_WHATSAPP) {
-                console.log('[Aviso] Gerando código numérico... Ignorando QR Code visual.');
-            } else {
-                console.log('\n▼ ESCANEIE O QR CODE ABAIXO PARA CONECTAR A STER ▼\n');
-                qrcode.generate(qr, { small: true });
-            }
+        if (qr && !NUMERO_WHATSAPP) {
+            qrcode.generate(qr, { small: true });
         }
 
         if (connection === 'close') {
-            const deveReiniciar = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            const codigoStatus = lastDisconnect?.error?.output?.statusCode;
+            const deveReiniciar = codigoStatus !== DisconnectReason.loggedOut;
+            console.log(`[Conexão] Fechada (Status: ${codigoStatus}). Reiniciando: ${deveReiniciar}`);
             if (deveReiniciar) conectarWhatsApp();
         } else if (connection === 'open') {
-            console.log('\n🚀 PROJETO CONECTADO! A Ster está ativa e operando na Ducarmo Exclusive!\n');
+            console.log('\n=================================================');
+            console.log('🚀 DUCARMO EXCLUSIVE - STER EM MODO DE USO 24H!');
+            console.log('=================================================\n');
         }
     });
 
@@ -98,26 +95,35 @@ async function conectarWhatsApp() {
 
         for (const msg of m.messages) {
             const jid = msg.key.remoteJid;
-            if (jid.endsWith('@g.us')) continue; // Ignora grupos
+            if (!jid || jid.endsWith('@g.us')) continue; // Proteção contra grupos
 
             const textoCliente = msg.message?.conversation || msg.message?.extendedTextMessage?.text;
 
-            // Comando para o dono da loja reativar o bot na conversa (/bot)
+            // Comando do Dono para reativar o Bot
             if (msg.key.fromMe && textoCliente === '/bot') {
                 clientesEmAtendimentoHumano.delete(jid);
                 await sock.sendMessage(jid, { text: "🤖 *Ster Reativada!* Voltei a cuidar do atendimento automático desta conversa lindeza." });
                 continue;
             }
 
-            // Se o cliente escolheu atendimento humano, a Ster fica em silêncio absoluto
             if (clientesEmAtendimentoHumano.has(jid)) continue;
-
             if (msg.key.fromMe) continue;
             if (!textoCliente) continue;
 
-            console.log(`[Conversa] de ${jid}: ${textoCliente}`);
+            // PROTEÇÃO DE PRODUÇÃO: Ignora mensagens antigas recebidas durante quedas ou reinicializações
+            const timestampMensagem = msg.messageTimestamp;
+            const timestampAgora = Math.floor(Date.now() / 1000);
+            if (timestampAgora - timestampMensagem > 60) {
+                continue; 
+            }
+
+            console.log(`[Mensagem Real] de ${jid}: ${textoCliente}`);
 
             try {
+                // EFEITO HUMANIZADO: Ativa o "Digitando..." no celular do cliente
+                await sock.sendPresenceUpdate('composing', jid);
+                await delay(2500); // Aguarda 2.5 segundos simulando digitação humana
+
                 const respostaGemini = await ai.models.generateContent({
                     model: 'gemini-2.5-flash',
                     contents: textoCliente,
@@ -125,20 +131,22 @@ async function conectarWhatsApp() {
                 });
 
                 let textoFinal = respostaGemini.text;
+                await sock.sendPresenceUpdate('paused', jid);
 
-                // Intercepta se o cliente pediu atendimento pessoal ou fim do funil
+                // Interceptação de Atendimento Humano
                 if (textoFinal.includes('[ATENDIMENTO_HUMANO]')) {
                     clientesEmAtendimentoHumano.add(jid);
                     textoFinal = textoFinal.replace('[ATENDIMENTO_HUMANO]', '').trim();
                     await sock.sendMessage(jid, { text: textoFinal });
-                    console.log(`[Status] Chat ${jid} transferido para o Atendimento Humano.`);
+                    console.log(`[Fluxo] Cliente ${jid} passado para o modo pessoal.`);
                     continue;
                 }
 
                 await sock.sendMessage(jid, { text: textoFinal });
                 
             } catch (erro) {
-                console.error("Erro na comunicação com o Gemini:", erro);
+                console.error("Erro na esteira de produção do Gemini:", erro);
+                await sock.sendPresenceUpdate('paused', jid);
             }
         }
     });
