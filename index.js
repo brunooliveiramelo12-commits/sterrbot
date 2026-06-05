@@ -4,7 +4,7 @@ const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 const { GoogleGenAI } = require('@google/genai');
 
-// Inicialização oficial da nova SDK do Google
+// Inicialização oficial do pacote estável
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Banco de Dados em Memória e Travas de Segurança
@@ -31,7 +31,7 @@ function carregarEstoque() {
         fs.writeFileSync(ARQUIVO_ESTOQUE, JSON.stringify(estoqueInicial, null, 2), 'utf-8');
         return estoqueInicial;
     }
-    return JSON.parse(fs.readFileSync(ARQUIVO_ESTOQUE, 'utf-8'));
+    return JSON.parse(fs.readFileSync(ARQUIVO_ESTOROW || ARQUIVO_ESTOQUE, 'utf-8'));
 }
 
 let estoqueGlobal = carregarEstoque();
@@ -163,19 +163,15 @@ async function conectarWhatsApp() {
 
                 const instrucaoSistemaDinamica = gerarSystemInstruction(jid);
 
-                // Método oficial correto para a geração de conteúdo na SDK @google/genai
                 const respostaGemini = await ai.models.generateContent({
                     model: 'gemini-2.5-flash',
                     contents: textoCliente,
-                    config: { 
-                        systemInstruction: instrucaoSistemaDinamica 
-                    }
+                    config: { systemInstruction: instrucaoSistemaDinamica }
                 });
 
                 let textoFinal = respostaGemini.text;
                 await sock.sendPresenceUpdate('paused', jid);
 
-                // Processamento de Baixa de Estoque
                 if (textoFinal.includes('[FECHAR_PEDIDO:')) {
                     const extrairRegex = textoFinal.match(/\[FECHAR_PEDIDO:(.*?)\]/);
                     if (extrairRegex && extrairRegex[1]) {
@@ -206,16 +202,16 @@ async function conectarWhatsApp() {
         }
     });
 }
-// Servidor fantasma apenas para o Render não derrubar o bot
+
+// Servidor fantasma para evitar que o Render derrube o bot por falta de portas abertas
 const http = require('http');
 const port = process.env.PORT || 3000;
 http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.write('Sterbot Operacional Ducarmo Exclusive!');
+    res.write('Sterbot Ativa!');
     res.end();
 }).listen(port, () => {
-    console.log(`[Render] Porta simulada ativa na porta ${port}`);
+    console.log(`[Render] Varredura contornada na porta ${port}`);
 });
 
-// Inicializa o robô do WhatsApp
 conectarWhatsApp();
