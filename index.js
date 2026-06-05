@@ -58,14 +58,13 @@ PILAR 1: CAPTAÇÃO DE LEADS (Etapa atual: ${dadosCliente.etapa})
 - Descubra se ela quer comprar para USO PRÓPRIO ou para REVENDA.
 
 PILAR 2: REGRAS DE PREÇO
-- USO PRÓPRIO: Atacado a partir de R$ 150,00. Abaixo disso, VAREJO.
+- USO PRÓPRIO: Atacado a partir de R$ 250,00. Abaixo disso, VAREJO.
 - REVENDA: Atacado a partir de R$ 250,00. Abaixo disso, VAREJO.
 - Use venda cruzada se o valor estiver perto de destravar o atacado.
 
 PILAR 3: CONTROLE DE ESTOQUE
 - Inventário físico disponível:
 ${catalogoTexto}
-- Nunca venda produtos com estoque 0.
 - Quando a cliente confirmar as peças que vai levar e aceitar fechar o pedido, insira a tag oculta [FECHAR_PEDIDO:COD1=QTD,COD2=QTD] no final do texto para nosso sistema dar baixa. Exemplo: [FECHAR_PEDIDO:P01=2]
 `;
 }
