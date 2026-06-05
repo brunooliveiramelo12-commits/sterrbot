@@ -8,7 +8,7 @@ const { GoogleGenAI } = require('@google/genai');
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Configurações de Produção da Loja
-const NUMERO_WHATSAPP = '5588992270058';
+const NUMERO_WHATSAPP = '5588982242568';
 const clientesEmAtendimentoHumano = new Set();
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
