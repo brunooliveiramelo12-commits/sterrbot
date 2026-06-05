@@ -10,12 +10,11 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 // Banco de Dados em Memória e Travas de Segurança
 const clientesEmAtendimentoHumano = new Set();
 const mensagensProcessadas = new Set();
-const memoriaClientes = new Map(); // Guarda o perfil do lead (nome, tamanho, tipo_cliente)
+const memoriaClientes = new Map(); 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const ARQUIVO_ESTOQUE = './estoque.json';
 
-// Inicializa ou carrega o arquivo de estoque integrado
 function carregarEstoque() {
     if (!fs.existsSync(ARQUIVO_ESTOQUE)) {
         const estoqueInicial = {
@@ -41,7 +40,6 @@ function salvarEstoque() {
     fs.writeFileSync(ARQUIVO_ESTOQUE, JSON.stringify(estoqueGlobal, null, 2), 'utf-8');
 }
 
-// Constrói as instruções dinâmicas injetando a nova regra de R$ 250 para revenda
 function gerarSystemInstruction(jid) {
     const dadosCliente = memoriaClientes.get(jid) || { etapa: "CAPTAÇÃO" };
     
@@ -53,25 +51,22 @@ function gerarSystemInstruction(jid) {
     return `
 Você é a Ster, a gerente virtual de operações e vendas especialista da Ducarmo Exclusive (moda íntima). Seu objetivo é gerenciar todo o ciclo do cliente de forma extremamente calorosa, simpática e focada em faturamento.
 
-Você opera sob um sistema rígido de 4 pilares:
+Você NUNCA deve se despedir ou dizer que está saindo da conversa por conta própria. Continue atendendo a cliente normalmente até que um humano decida intervir digitalmente.
 
-PILAR 1: CAPTAÇÃO DE LEADS (Sua etapa atual declarada nesta conversa: ${dadosCliente.etapa})
-- Antes de vender, descubra o nome da cliente, qual tamanho ela usa (P, M, G, GG, EX) e qual tecido ela prefere (Antialérgico, Cetinete, Lycra ou Renda). 
-- Descubra obrigatoriamente se ela quer comprar para USO PRÓPRIO ou se quer REVENDA.
+PILAR 1: CAPTAÇÃO DE LEADS (Etapa atual: ${dadosCliente.etapa})
+- Descubra o nome da cliente, tamanho (P, M, G, GG, EX) e tecido preferido.
+- Descubra se ela quer comprar para USO PRÓPRIO ou para REVENDA.
 
-PILAR 2: REGRAS DE OURO DE PREÇO (MUITO IMPORTANTE)
-- Se a cliente quer para USO PRÓPRIO: O pedido mínimo para liberar preço de ATACADO é R$ 150,00. Abaixo disso, calcula preço de VAREJO.
-- Se a cliente declarou que quer para REVENDA: O pedido mínimo para liberar preço de ATACADO é R$ 250,00. Abaixo disso, calcula preço de VAREJO.
-- Estratégia de Venda Cruzada: Se o carrinho dela estiver perto do limite correspondente (ex: deu R$ 210 para revenda, ou R$ 120 para uso próprio), incentive-a com carinho a levar mais peças para bater a meta e destravar o preço de fábrica na compra inteira.
+PILAR 2: REGRAS DE PREÇO
+- USO PRÓPRIO: Atacado a partir de R$ 150,00. Abaixo disso, VAREJO.
+- REVENDA: Atacado a partir de R$ 250,00. Abaixo disso, VAREJO.
+- Use venda cruzada se o valor estiver perto de destravar o atacado.
 
 PILAR 3: CONTROLE DE ESTOQUE
-- Use o seguinte inventário físico atualizado:
+- Inventário físico disponível:
 ${catalogoTexto}
-- Nunca venda produtos com estoque igual a 0.
-- Quando o pedido for fechado, adicione a tag [FECHAR_PEDIDO:COD1=QTD,COD2=QTD] de forma oculta no final do texto. Exemplo: [FECHAR_PEDIDO:P01=2,P06=1]
-
-PILAR 4: ENCAMINHAMENTO HUMANO FINANCEIRO
-- Quando o cliente aceitar a soma de valores e quiser a chave de pagamento/PIX, despeça-se com carinho e use a tag [ATENDIMENTO_HUMANO].
+- Nunca venda produtos com estoque 0.
+- Quando a cliente confirmar as peças que vai levar e aceitar fechar o pedido, insira a tag oculta [FECHAR_PEDIDO:COD1=QTD,COD2=QTD] no final do texto para nosso sistema dar baixa. Exemplo: [FECHAR_PEDIDO:P01=2]
 `;
 }
 
@@ -99,7 +94,7 @@ async function conectarWhatsApp() {
             if (deveReiniciar) conectarWhatsApp();
         } else if (connection === 'open') {
             console.log('\n=================================================');
-            console.log('🚀 STERBOT V2.1 - SISTEMA REVENDA R$250 ATIVO!');
+            console.log('🚀 STERBOT V2.2 - MODO INTERVENÇÃO HUMANA ATIVO!');
             console.log('=================================================\n');
         }
     });
@@ -111,7 +106,6 @@ async function conectarWhatsApp() {
             const jid = msg.key.remoteJid;
             if (!jid || jid.endsWith('@g.us')) continue;
 
-            // TRAVA ANTI-DUPLICAÇÃO (Resolve o problema do print)
             const idMensagem = msg.key.id;
             if (mensagensProcessadas.has(idMensagem)) continue;
             mensagensProcessadas.add(idMensagem);
@@ -123,100 +117,11 @@ async function conectarWhatsApp() {
 
             const textoCliente = msg.message?.conversation || msg.message?.extendedTextMessage?.text;
 
-            // Comandos do painel administrativo da loja
+            // ⚡ INTEGRAÇÃO INTELIGENTE: Se você mandar QUALQUER mensagem no chat, o bot para na hora!
             if (msg.key.fromMe && textoCliente) {
                 if (textoCliente === '/bot') {
                     clientesEmAtendimentoHumano.delete(jid);
-                    await sock.sendMessage(jid, { text: "🤖 *Ster Reativada!* Retornando ao monitoramento de captação e controle de estoque." });
+                    await sock.sendMessage(jid, { text: "🤖 *Ster Reativada!* Voltando a monitorar a conversa." });
                     continue;
                 }
-                if (textoCliente === '/estoque') {
-                    let relatorio = "📦 *ESTOQUE ATUAL DUCARMO:*\n\n";
-                    for (const [cod, item] of Object.entries(estoqueGlobal)) {
-                        relatorio += `• *${cod}*: ${item.nome} | Qtd: *${item.quantidade}*\n`;
-                    }
-                    await sock.sendMessage(jid, { text: relatorio });
-                    continue;
-                }
-            }
-
-            if (clientesEmAtendimentoHumano.has(jid)) continue;
-            if (msg.key.fromMe || !textoCliente) continue;
-
-            // Proteção contra spams antigos de histórico
-            const timestampAgora = Math.floor(Date.now() / 1000);
-            if (timestampAgora - msg.messageTimestamp > 60) continue;
-
-            // Inicializa a memória do lead
-            if (!memoriaClientes.has(jid)) {
-                memoriaClientes.set(jid, { etapa: "CAPTAÇÃO", dataCriacao: Date.now() });
-                
-                // Disparo de Pós-Venda em segundo plano (agendado para 5 dias)
-                setTimeout(async () => {
-                    if (clientesEmAtendimentoHumano.has(jid)) return;
-                    await sock.sendMessage(jid, { text: "Oi, minha flor! Passando para saber se suas pecinhas da Ducarmo Exclusive chegaram direitinho e se serviram perfeitamente? Quero garantir que ficou tudo lindo! 💕" });
-                }, 1000 * 60 * 60 * 24 * 5);
-            }
-
-            console.log(`[Operação Log] Movimentação de ${jid}: ${textoCliente}`);
-
-            try {
-                await sock.sendPresenceUpdate('composing', jid);
-                await delay(2500); // Simulador de digitação humana
-
-                const instrucaoSistemaDinamica = gerarSystemInstruction(jid);
-
-                const respostaGemini = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
-                    contents: textoCliente,
-                    config: { systemInstruction: instrucaoSistemaDinamica }
-                });
-
-                let textoFinal = respostaGemini.text;
-                await sock.sendPresenceUpdate('paused', jid);
-
-                // Processamento de Baixa de Estoque
-                if (textoFinal.includes('[FECHAR_PEDIDO:')) {
-                    const extrairRegex = textoFinal.match(/\[FECHAR_PEDIDO:(.*?)\]/);
-                    if (extrairRegex && extrairRegex[1]) {
-                        const itensAgrupados = extrairRegex[1].split(',');
-                        itensAgrupados.forEach(par => {
-                            const [codigoItem, qtdDesejada] = par.split('=');
-                            const quantidade = parseInt(qtdDesejada);
-                            if (estoqueGlobal[codigoItem]) {
-                                estoqueGlobal[codigoItem].quantidade = Math.max(0, estoqueGlobal[codigoItem].quantidade - quantidade);
-                            }
-                        });
-                        salvarEstoque();
-                        textoFinal = textoFinal.replace(extrairRegex[0], '').trim();
-                    }
-                }
-
-                // Processamento de Direcionamento Humano
-                if (textoFinal.includes('[ATENDIMENTO_HUMANO]')) {
-                    clientesEmAtendimentoHumano.add(jid);
-                    const dadosAtuais = memoriaClientes.get(jid);
-                    if (dadosAtuais) dadosAtuais.etapa = "DIRECIONADO_AO_FINANCEIRO";
-
-                    textoFinal = textoFinal.replace('[ATENDIMENTO_HUMANO]', '').trim();
-                    await sock.sendMessage(jid, { text: textoFinal });
-                    console.log(`[Fluxo de Caixa] Cliente ${jid} encaminhado ao balcão.`);
-                    continue;
-                }
-
-                const dadosL = memoriaClientes.get(jid);
-                if (dadosL && dadosL.etapa === "CAPTAÇÃO") {
-                    dadosL.etapa = "OFERTA_E_CONVENÇÃO";
-                }
-
-                await sock.sendMessage(jid, { text: textoFinal });
-
-            } catch (erro) {
-                console.error("Falha na execução da esteira operacional:", erro);
-                await sock.sendPresenceUpdate('paused', jid);
-            }
-        }
-    });
-}
-
-conectarWhatsApp();
+                if (
