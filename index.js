@@ -2,10 +2,15 @@ const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = requi
 const pino = require('pino');
 const qrcode = require('qrcode-terminal');
 const fs = require('fs');
-const { GoogleGenAI } = require('@google/genai');
+const { GoogleGenAI } = require('@google/generative-ai');
 
-// Inicialização corrigida de acordo com a especificação da biblioteca do Google
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Inicialização oficial do pacote @google/generative-ai
+let ai;
+try {
+    ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+} catch (e) {
+    console.error("Erro ao inicializar o Google Gen AI. Verifique a chave GEMINI_API_KEY.");
+}
 
 // Banco de Dados em Memória e Travas de Segurança
 const clientesEmAtendimentoHumano = new Set();
@@ -94,7 +99,7 @@ async function conectarWhatsApp() {
             if (deveReiniciar) conectarWhatsApp();
         } else if (connection === 'open') {
             console.log('\n=================================================');
-            console.log('🚀 STERBOT V2.2 - MODO INTERVENÇÃO HUMANA ATIVO!');
+            console.log('🚀 STERBOT V2.2 - SISTEMA DUCARMO PRONTO E ATIVO!');
             console.log('=================================================\n');
         }
     });
@@ -117,7 +122,7 @@ async function conectarWhatsApp() {
 
             const textoCliente = msg.message?.conversation || msg.message?.extendedTextMessage?.text;
 
-            // Intervenção inteligente pelo painel da loja
+            // Intervenção inteligente pela operadora humana da loja
             if (msg.key.fromMe && textoCliente) {
                 if (textoCliente === '/bot') {
                     clientesEmAtendimentoHumano.delete(jid);
@@ -163,7 +168,7 @@ async function conectarWhatsApp() {
 
                 const instrucaoSistemaDinamica = gerarSystemInstruction(jid);
 
-                // Chamada correta utilizando a SDK instanciada para o gemini-2.5-flash
+                // Chamada de API ajustada para o ecossistema @google/generative-ai
                 const respostaGemini = await ai.models.generateContent({
                     model: 'gemini-2.5-flash',
                     contents: textoCliente,
