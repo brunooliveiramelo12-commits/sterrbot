@@ -8,7 +8,6 @@ const { GoogleGenAI } = require('@google/genai');
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Configurações de Produção da Loja
-const NUMERO_WHATSAPP = '5588982242568';
 const clientesEmAtendimentoHumano = new Set();
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -54,27 +53,14 @@ async function conectarWhatsApp() {
         browser: ['Ducarmo Exclusive', 'Chrome', '1.0.0']
     });
 
-    // Conexão via Código de Pareamento por Número
-    if (!sock.authState.creds.registered && NUMERO_WHATSAPP) {
-        setTimeout(async () => {
-            try {
-                const numeroLimpo = NUMERO_WHATSAPP.replace(/\D/g, '');
-                const codigo = await sock.requestPairingCode(numeroLimpo);
-                console.log(`\n=================================================`);
-                console.log(`🔑 SEU CÓDIGO DE PAREAMENTO NO CELULAR: ${codigo}`);
-                console.log(`=================================================\n`);
-            } catch (errCode) {
-                console.error("Erro ao gerar código de pareamento:", errCode);
-            }
-        }, 6000);
-    }
-
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
 
-        if (qr && !NUMERO_WHATSAPP) {
+        // GERAÇÃO DO QR CODE NO TERMINAL
+        if (qr) {
+            console.log('\n▼ ESCANEIE O QR CODE ABAIXO PARA CONECTAR A STER ▼\n');
             qrcode.generate(qr, { small: true });
         }
 
@@ -85,7 +71,7 @@ async function conectarWhatsApp() {
             if (deveReiniciar) conectarWhatsApp();
         } else if (connection === 'open') {
             console.log('\n=================================================');
-            console.log('🚀 DUCARMO EXCLUSIVE - STER EM MODO DE USO 24H!');
+            console.log('🚀 DUCARMO EXCLUSIVE - STER EM MODO DE USO VIA QR CODE!');
             console.log('=================================================\n');
         }
     });
@@ -110,7 +96,7 @@ async function conectarWhatsApp() {
             if (msg.key.fromMe) continue;
             if (!textoCliente) continue;
 
-            // PROTEÇÃO DE PRODUÇÃO: Ignora mensagens antigas recebidas durante quedas ou reinicializações
+            // PROTEÇÃO DE PRODUÇÃO: Ignora mensagens antigas
             const timestampMensagem = msg.messageTimestamp;
             const timestampAgora = Math.floor(Date.now() / 1000);
             if (timestampAgora - timestampMensagem > 60) {
@@ -120,9 +106,9 @@ async function conectarWhatsApp() {
             console.log(`[Mensagem Real] de ${jid}: ${textoCliente}`);
 
             try {
-                // EFEITO HUMANIZADO: Ativa o "Digitando..." no celular do cliente
+                // EFEITO HUMANIZADO: Ativa o "Digitando..."
                 await sock.sendPresenceUpdate('composing', jid);
-                await delay(2500); // Aguarda 2.5 segundos simulando digitação humana
+                await delay(2500); 
 
                 const respostaGemini = await ai.models.generateContent({
                     model: 'gemini-2.5-flash',
@@ -145,11 +131,4 @@ async function conectarWhatsApp() {
                 await sock.sendMessage(jid, { text: textoFinal });
                 
             } catch (erro) {
-                console.error("Erro na esteira de produção do Gemini:", erro);
-                await sock.sendPresenceUpdate('paused', jid);
-            }
-        }
-    });
-}
-
-conectarWhatsApp();
+                console.error("
