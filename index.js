@@ -4,10 +4,10 @@ const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 const { GoogleGenAI } = require('@google/genai');
 
-// Correção da inicialização para a versão mais recente da biblioteca do Google
+// Inicialização segura para a biblioteca @google/genai
 let ai;
 try {
-    ai = new GoogleGenAI(); // A API Key é puxada automaticamente de process.env.GEMINI_API_KEY
+    ai = new GoogleGenAI(); // Puxa automaticamente process.env.GEMINI_API_KEY
 } catch (e) {
     console.error("Erro ao inicializar GoogleGenAI. Verifique a GEMINI_API_KEY.");
 }
@@ -122,7 +122,7 @@ async function conectarWhatsApp() {
 
             const textoCliente = msg.message?.conversation || msg.message?.extendedTextMessage?.text;
 
-            // Intervenção inteligente pelo painel administrativo da loja
+            // Intervenção inteligente pelo painel da loja
             if (msg.key.fromMe && textoCliente) {
                 if (textoCliente === '/bot') {
                     clientesEmAtendimentoHumano.delete(jid);
@@ -140,7 +140,7 @@ async function conectarWhatsApp() {
 
                 if (!clientesEmAtendimentoHumano.has(jid)) {
                     clientesEmAtendimentoHumano.add(jid);
-                    console.log(`[Intervenção] Você respondeu no chat. Ster foi silenciada para o cliente: ${jid}`);
+                    console.log(`[Intervenção] Você respondeu no chat. Ster silenciada para: ${jid}`);
                 }
                 continue;
             }
@@ -168,7 +168,6 @@ async function conectarWhatsApp() {
 
                 const instrucaoSistemaDinamica = gerarSystemInstruction(jid);
 
-                // Nova chamada de API adaptada para as versões recentes da biblioteca @google/genai
                 const respostaGemini = await ai.models.generateContent({
                     model: 'gemini-2.5-flash',
                     contents: textoCliente,
@@ -178,7 +177,7 @@ async function conectarWhatsApp() {
                 let textoFinal = respostaGemini.text;
                 await sock.sendPresenceUpdate('paused', jid);
 
-                // Processamento de Baixa de Estoque
+                // Processamento de Baixa de Estoque corrigido e fechado adequadamente
                 if (textoFinal.includes('[FECHAR_PEDIDO:')) {
                     const extrairRegex = textoFinal.match(/\[FECHAR_PEDIDO:(.*?)\]/);
                     if (extrairRegex && extrairRegex[1]) {
@@ -187,8 +186,27 @@ async function conectarWhatsApp() {
                             const [codigoItem, qtdDesejada] = par.split('=');
                             const quantidade = parseInt(qtdDesejada);
                             if (estoqueGlobal[codigoItem]) {
-                                estoqueGlobal[codigoItem].quantidade = Math.max(0, estoqueGlobal[codigoItem].quantidade - quantity);
+                                estoqueGlobal[codigoItem].quantidade = Math.max(0, estoqueGlobal[codigoItem].quantidade - quantidade);
                             }
                         });
                         salvarEstoque();
-                        textoFinal = textoFinal.replace(
+                        textoFinal = textoFinal.replace(extrairRegex[0], '').trim();
+                    }
+                }
+
+                const dadosL = memoriaClientes.get(jid);
+                if (dadosL && dadosL.etapa === "CAPTAÇÃO") {
+                    dadosL.etapa = "OFERTA_E_CONVENÇÃO";
+                }
+
+                await sock.sendMessage(jid, { text: textoFinal });
+
+            } catch (erro) {
+                console.error("Erro na esteira do Gemini:", erro);
+                await sock.sendPresenceUpdate('paused', jid);
+            }
+        }
+    });
+}
+
+conectarWhatsApp();
