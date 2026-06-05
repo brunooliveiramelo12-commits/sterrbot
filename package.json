@@ -1,14 +1,14 @@
 {
   "name": "sterbot-sistema-operacional",
-  "version": "2.0.0",
-  "description": "Sistema de captação, vendas, estoque e pós-venda - Ducarmo",
+  "version": "2.2.0",
+  "description": "Sistema de captação, vendas, estoque e pós-venda - Ducarmo Exclusive",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^6.6.0",
-    "@google/genai": "^0.1.1",
+    "@google/genai": "latest",
     "pino": "^8.19.0",
     "qrcode-terminal": "^0.12.0",
     "link-preview-js": "^3.0.4"
