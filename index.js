@@ -4,13 +4,8 @@ const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 const { GoogleGenAI } = require('@google/genai');
 
-// Inicialização segura para a biblioteca @google/genai
-let ai;
-try {
-    ai = new GoogleGenAI(); // Puxa automaticamente process.env.GEMINI_API_KEY
-} catch (e) {
-    console.error("Erro ao inicializar GoogleGenAI. Verifique a GEMINI_API_KEY.");
-}
+// Inicialização corrigida de acordo com a especificação da biblioteca do Google
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Banco de Dados em Memória e Travas de Segurança
 const clientesEmAtendimentoHumano = new Set();
@@ -168,6 +163,7 @@ async function conectarWhatsApp() {
 
                 const instrucaoSistemaDinamica = gerarSystemInstruction(jid);
 
+                // Chamada correta utilizando a SDK instanciada para o gemini-2.5-flash
                 const respostaGemini = await ai.models.generateContent({
                     model: 'gemini-2.5-flash',
                     contents: textoCliente,
@@ -177,7 +173,7 @@ async function conectarWhatsApp() {
                 let textoFinal = respostaGemini.text;
                 await sock.sendPresenceUpdate('paused', jid);
 
-                // Processamento de Baixa de Estoque corrigido e fechado adequadamente
+                // Processamento de Baixa de Estoque
                 if (textoFinal.includes('[FECHAR_PEDIDO:')) {
                     const extrairRegex = textoFinal.match(/\[FECHAR_PEDIDO:(.*?)\]/);
                     if (extrairRegex && extrairRegex[1]) {
