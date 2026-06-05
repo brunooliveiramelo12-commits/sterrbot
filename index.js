@@ -206,5 +206,16 @@ async function conectarWhatsApp() {
         }
     });
 }
+// Servidor fantasma apenas para o Render não derrubar o bot
+const http = require('http');
+const port = process.env.PORT || 3000;
+http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.write('Sterbot Operacional Ducarmo Exclusive!');
+    res.end();
+}).listen(port, () => {
+    console.log(`[Render] Porta simulada ativa na porta ${port}`);
+});
 
+// Inicializa o robô do WhatsApp
 conectarWhatsApp();
