@@ -129,6 +129,4 @@ async function conectarWhatsApp() {
                 }
 
                 await sock.sendMessage(jid, { text: textoFinal });
-                
-            } catch (erro) {
-                console.error("
+           
