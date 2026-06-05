@@ -1,15 +1,19 @@
 {
-  "name": "ster-whatsapp-bot",
-  "version": "1.0.0",
+  "name": "sterbot-sistema-operacional",
+  "version": "2.0.0",
+  "description": "Sistema de captação, vendas, estoque e pós-venda - Ducarmo Exclusive",
   "main": "index.js",
-  "type": "commonjs",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "@google/genai": "latest",
-    "@whiskeysockets/baileys": "latest",
-    "qrcode-terminal": "latest",
-    "pino": "latest"
+    "@whiskeysockets/baileys": "^6.6.0",
+    "@google/genai": "^0.1.1",
+    "pino": "^8.19.0",
+    "qrcode-terminal": "^0.12.0",
+    "link-preview-js": "^3.0.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
