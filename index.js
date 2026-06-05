@@ -2,15 +2,10 @@ const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = requi
 const pino = require('pino');
 const qrcode = require('qrcode-terminal');
 const fs = require('fs');
-const { GoogleGenAI } = require('@google/generative-ai');
+const { GoogleGenAI } = require('@google/genai');
 
-// Inicialização oficial do pacote @google/generative-ai
-let ai;
-try {
-    ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-} catch (e) {
-    console.error("Erro ao inicializar o Google Gen AI. Verifique a chave GEMINI_API_KEY.");
-}
+// Inicialização oficial da nova SDK do Google
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Banco de Dados em Memória e Travas de Segurança
 const clientesEmAtendimentoHumano = new Set();
@@ -99,7 +94,7 @@ async function conectarWhatsApp() {
             if (deveReiniciar) conectarWhatsApp();
         } else if (connection === 'open') {
             console.log('\n=================================================');
-            console.log('🚀 STERBOT V2.2 - SISTEMA DUCARMO PRONTO E ATIVO!');
+            console.log('🚀 STERBOT V2.2 - MODO INTERVENÇÃO HUMANA ATIVO!');
             console.log('=================================================\n');
         }
     });
@@ -168,11 +163,13 @@ async function conectarWhatsApp() {
 
                 const instrucaoSistemaDinamica = gerarSystemInstruction(jid);
 
-                // Chamada de API ajustada para o ecossistema @google/generative-ai
+                // Método oficial correto para a geração de conteúdo na SDK @google/genai
                 const respostaGemini = await ai.models.generateContent({
                     model: 'gemini-2.5-flash',
                     contents: textoCliente,
-                    config: { systemInstruction: instrucaoSistemaDinamica }
+                    config: { 
+                        systemInstruction: instrucaoSistemaDinamica 
+                    }
                 });
 
                 let textoFinal = respostaGemini.text;
